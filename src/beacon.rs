@@ -301,15 +301,18 @@ fn beacon_format_free(format: *mut Format) {
 ///
 /// Follows the behavior of Beacon’s `beacon_formt_printf`.
 #[unsafe(no_mangle)]
-unsafe extern "C" fn beacon_formt_printf(format: *mut Format, fmt: *const c_char, mut args: ...) {
+unsafe extern "C" fn beacon_formt_printf(format: *mut Format, fmt: *const c_char, args: ...) {
     if format.is_null() || fmt.is_null() {
         return;
     }
 
-    let fmt_str = CStr::from_ptr(fmt).to_str().unwrap_or("");
     let mut temp_str = String::new();
 
-    printf_compat::format(fmt_str.as_ptr().cast(), args.as_va_list(), printf_compat::output::fmt_write(&mut temp_str));
+    printf_compat::format(
+        fmt,
+        args,
+        printf_compat::output::fmt_write(&mut temp_str),
+    );
 
     let length_needed = temp_str.len() as c_int;
     if (*format).length + length_needed >= (*format).size {
@@ -434,10 +437,14 @@ fn beacon_output(_type: c_int, data: *mut c_char, len: c_int) {
 
 /// Formats a string using Beacon’s printf mechanism and stores it.
 #[unsafe(no_mangle)]
-unsafe extern "C" fn beacon_printf(_type: c_int, fmt: *mut c_char, mut args: ...) {
+unsafe extern "C" fn beacon_printf(_type: c_int, fmt: *mut c_char, args: ...) {
+
     let mut str = String::new();
-    printf_compat::format(fmt, args.as_va_list(), printf_compat::output::fmt_write(&mut str));
-    str.push('\0');
+    printf_compat::format(
+        fmt,
+        args,
+        printf_compat::output::fmt_write(&mut str),
+    );    str.push('\0');
 
     let mut buffer = BEACON_BUFFER.lock();
     buffer.append_string(&str);
